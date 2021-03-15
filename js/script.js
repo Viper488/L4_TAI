@@ -1,4 +1,4 @@
-let preQuestions =
+/*let preQuestions =
     [
         {
             "category": "Entertainment: Music",
@@ -169,20 +169,103 @@ let preQuestions =
                 "Power Supply",
                 "Video Card"
             ]
-        }];
+        }];*/
+
+let preQuestions = [];
 
 let next = document.querySelector('.next');
+let previous = document.querySelector('.previous');
 
+let showIndex = document.querySelector('#index');
 let question = document.querySelector('.question');
 let answers = document.querySelectorAll('.list-group-item');
+
+let list = document.querySelector('.list');
+let results = document.querySelector('.results');
+let userScorePoint = document.querySelector('.userScorePoint');
+let average = document.querySelector('.average')
 
 let pointsElem = document.querySelector('.score');
 let restart = document.querySelector('.restart');
 let index = 0;
 let points = 0;
+let aveScore = 0;
 
-for (let i = 0; i < answers.length; i++) {
-    answers[i].addEventListener('click', doAction);
+getQuestions();
+
+function getQuestions(){
+    fetch('https://quiztai.herokuapp.com/api/quiz')
+        .then(resp => resp.json())
+        .then(resp => {
+            preQuestions = resp;
+            localStorage.removeItem("games"); // Flush local storage for testing
+            localStorage.removeItem("points"); // Flush local storage for testing
+            setQuestion(index); // Set first question
+            activateAnswers();  // Activate first answers
+
+            next.addEventListener('click', function () {
+
+                index++;
+                if(index >= preQuestions.length){
+                    saveScore()
+                    list.style.display = 'none';
+                    results.style.display = 'block';
+                    userScorePoint.innerHTML = points;
+                    average.innerHTML = aveScore;
+                }
+                else{
+                    setQuestion(index);
+                    activateAnswers();
+                }
+            })
+
+            previous.addEventListener('click', function () {
+                if(index > 0){
+                    index--;
+                    setQuestion(index);
+                    activateAnswers();
+                }
+            })
+
+            restart.addEventListener('click', function (event) {
+                event.preventDefault();
+
+                index = 0;
+                points = 0;
+                let userScorePoint = document.querySelector('.score');
+                userScorePoint.innerHTML = points;
+                setQuestion(index);
+                activateAnswers();
+                list.style.display = 'block';
+                results.style.display = 'none';
+            });
+        });
+}
+
+function activateAnswers(){
+    for(let i = 0; i < answers.length; i++){
+        answers[i].addEventListener('click', doAction);
+        if(answers[i].classList.contains('correct')){
+            answers[i].classList.remove('correct');
+        }
+        else if(answers[i].classList.contains('incorrect')){
+            answers[i].classList.remove('incorrect');
+        }
+    }
+}
+
+function disableAnswers(){
+    for(let i = 0; i < answers.length; i++){
+        answers[i].removeEventListener('click', doAction);
+    }
+}
+
+function markCorrect(elem){
+    elem.classList.add('correct');
+}
+
+function markInCorrect(elem){
+    elem.classList.add('incorrect');
 }
 
 function doAction(event) {
@@ -198,17 +281,48 @@ function doAction(event) {
     disableAnswers();
 }
 
+function saveScore(){
+    let games = JSON.parse(localStorage.getItem("games")); // Get number of games played
+    let prevScore = JSON.parse(localStorage.getItem("points")); // Get previous total score
+    if(games == null){
+        games = 0;
+    }
+    if(prevScore == null){
+        prevScore = 0;
+    }
+    games += 1;
+    prevScore = prevScore + points;
+
+    localStorage.setItem("games", JSON.stringify(games)); // Save number of games played
+    localStorage.setItem("points", JSON.stringify(prevScore)); // Save total score
+    localStorage.setItem("average", JSON.stringify(prevScore / games)); // Save average score
+
+    aveScore = JSON.parse(localStorage.getItem("average"));  // Get average score
+
+    console.log("Current score: " + points);
+    console.log("Games played: " + games);
+    console.log("Total score: " + prevScore);
+    console.log("Average score: " + aveScore);
+}
+
+function setQuestion(index) {
+    showIndex.innerHTML = (index + 1);
+    question.innerHTML = preQuestions[index].question;
+
+    answers[0].innerHTML = preQuestions[index].answers[0];
+    answers[1].innerHTML = preQuestions[index].answers[1];
+    answers[2].innerHTML = preQuestions[index].answers[2];
+    answers[3].innerHTML = preQuestions[index].answers[3];
 
 
-restart.addEventListener('click', function (event) {
-    event.preventDefault();
+    if(preQuestions[index].answers.length === 2){
+        answers[2].style.display = 'none';
+        answers[3].style.display = 'none';
+    }
+    else {
+        answers[2].style.display = 'block';
+        answers[3].style.display = 'block';
+    }
+}
 
-    index = 0;
-    points = 0;
-    let userScorePoint = document.querySelector('.score');
-    userScorePoint.innerHTML = points;
-    setQuestion(index);
-    activateAnswers();
-    list.style.display = 'block';
-    results.style.display = 'none';
-});
+
